@@ -2,7 +2,7 @@
 
 Online versions of the Demand Selection Task (Kool et al., 2010), as used by Patzelt, Kool, & Gershman (2019).
 
-Note that
+Note that this experiment is 50% shorter (4 blocks of 75 trials) than the original version of the Demand Selection Task (8 blocks of 75 trials).
 
 This experiment has been written using an older version of Josh deLeeuw's jsPsych toolbox (http://www.jspsych.org/).
 
