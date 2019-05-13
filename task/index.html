@@ -1,0 +1,351 @@
+<!-- 
+Wouter Kool, 2017
+
+This is an online version of the  demand selection task (Kool et al., 2010, JEPG) as used in Patzelt et al. (2019, Scientific Reports).
+Note that the original demand selection task has 8 blocks of 75 trials each, but this version has 4 blocks of 75 trials each. -->
+
+<!doctype html>
+<html>
+<head>
+	<title>Harvard University HIT</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+	<script src="jspsych/jspsych.js"></script>
+	<script src="jspsych/plugins/jspsych-text.js"></script>
+	<script src="jspsych/plugins/jspsych-survey-likert.js"></script>
+	<script src="jspsych/plugins/jspsych-practice-switching-stim.js"></script>
+	<script src="jspsych/plugins/jspsych-dst-practice-stim.js"></script>
+	<script src="jspsych/plugins/jspsych-dst-stim.js"></script>
+	<script src="jspsych/plugins/jspsych-survey-text.js"></script>
+	<script src="jspsych/plugins/jspsych-html.js"></script>
+	<script src="jspsych/plugins/jspsych-instructions.js"></script>
+	<script src="jspsych/plugins/jspsych-call-function.js"></script>
+	<script src="additional-functions.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+	<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/black-tie/jquery-ui.min.css" rel="stylesheet" type="text/css"></link>
+	<link href="jspsych/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+</head>
+<body>
+</body>
+<script>
+
+var workerId = getQueryVariable("workerId");
+var hitId = getQueryVariable("hitId");
+var assignmentId = getQueryVariable("assignmentId");
+
+var nrswitchtrials1 = 10;
+var nrswitchtrials2 = 10;
+var nrchoicepracticetrials = 20;
+var nrtrials = 300;
+var nrblocks = 4;
+var block_score = 0;
+
+var trialsperblock = nrtrials/nrblocks;
+
+var boxes = shuffle([[1,8],[2,7],[3,6],[4,5]]);
+var pairs = shuffle([1,2,3,4])
+
+var mapping = [];
+
+for (var i = 0; i < 4; i++) {
+	mapping[i] = shuffle([1,0]);
+}
+
+var show_reminder_1 = false;
+var show_reminder_2 = false;
+var error_again = 0;
+
+// set up variables as
+var sex = '';
+var age = 0;
+
+var subid = '';
+
+/* jspsych blocks */
+
+var change_colors = {
+	type: 'call-function',
+	func: function(){ 
+		$('.jspsych-display-element').css('background-color', 'rgb(131,131,131)');
+	}
+}
+var change_colors_back = {
+	type: 'call-function',
+	func: function(){ 
+		$('.jspsych-display-element').css('background-color', 'white');
+	}
+}
+
+var id_question = ["Worker ID:"];
+var id_block = {
+	type: 'survey-text',
+	questions: [id_question],
+	preamble: ["<div align=center>Please enter your Amazon Mechanical Turk Worker ID below.<br><br>If you do not enter it accurately, we will not be able to pay you.</div>"],
+};
+var check_id_block = { 
+	chunk_type: 'while', 
+	timeline: [id_block], 
+	continue_function: function(data){ 
+		answers = data[0].responses.split(":"); 
+		id = answers[1].split('"')[1];
+		if (id){ 
+			subid = id;
+			id_trial = new Array(1);
+			id_trial[0] = {
+				subid: subid
+			}
+			save_data(id_trial,"dst_subid")
+			return false; 
+		} else {
+			alert("Please enter Participant ID."); 
+			return true; 
+		}
+	},
+	timing_post_trial: 0,
+};
+
+var instructions_1_block = {
+	type: "instructions",
+	pages: instructions_1_text(),
+	key_forward: "j",
+	key_backward: "f",
+	show_clickable_nav: true,
+}
+
+var practice_switching_block_1 = {
+	type: "practice-switching-stim",
+	nrtrials: nrswitchtrials1,
+	feedback: true,
+};
+var reminder_1_block = {
+	type: "text",
+	text: "<div class='center-content'><br><br>Just as a reminder:<br><br>If the number is yellow, press A for odd and S for even.<br><br>If the number is blue, press A for lower than 5 and S for higher than 5.<br><br>Press any key to continue.",
+};
+var reminder_1_if = {
+	chunk_type: 'if',
+	timeline: [reminder_1_block],
+	conditional_function: function(){
+		return show_reminder_1;
+	}
+};
+var switch_1_while_block = {
+    chunk_type: 'while',
+    timeline: [reminder_1_if, practice_switching_block_1],
+    continue_function: function(data){
+		var alldata = jsPsych.data.getTrialsOfType("practice-switching-stim");
+		lastchunkdata = alldata.slice(alldata.length-nrswitchtrials1, alldata.length);
+				
+		var block_score = 0;
+		for (var i = 0; i < nrswitchtrials1; i++) {
+			block_score = block_score + (lastchunkdata[i].accuracy == true);
+		}
+		
+		if (block_score < 9){
+			if (error_again == 1) {
+				error_again = 0;
+				show_reminder_1 = true;
+			} else {
+				error_again = 1;
+				show_reminder_1 = false;
+			}
+			
+			return true
+		} else {
+			return false
+		}
+		
+    }
+};
+
+var instructions_2_block = {
+	type: "instructions",
+	pages: instructions_2_text(),
+	key_forward: "j",
+	key_backward: "f",
+	show_clickable_nav: true,
+}
+
+var practice_switching_block_2 = {
+	type: "practice-switching-stim",
+	nrtrials: nrswitchtrials2,
+	feedback: false,
+};
+var reminder_2_block = {
+	type: "text",
+	text: "<div class='center-content'><br><br>Just as a reminder:<br><br>If the number is yellow, press A for odd and S for even.<br><br>If the number is blue, press A for lower than 5 and S for higher than 5.<br><br>Press any key to continue.",
+};
+var reminder_2_if = {
+	chunk_type: 'if',
+	timeline: [reminder_2_block],
+	conditional_function: function(){
+		return show_reminder_2;
+	}
+};
+var practice_feedback = {
+	type: "text",
+	text: function(data){
+		var alldata = jsPsych.data.getTrialsOfType("practice-switching-stim");
+		lastchunkdata = alldata.slice(alldata.length-nrswitchtrials2, alldata.length);
+		
+		
+		var block_score = 0;
+		for (var i = 0; i < nrswitchtrials2; i++) {
+			block_score = block_score + (lastchunkdata[i].accuracy == true);
+		}
+				
+		return "<div class='center-content'>"+block_score+"/10 correct<br><br>Press any key to continue."
+	}
+};
+var switch_2_while_block = {
+    chunk_type: 'while',
+    timeline: [reminder_2_if, practice_switching_block_2, practice_feedback],
+    continue_function: function(data){
+		var alldata = jsPsych.data.getTrialsOfType("practice-switching-stim");
+		lastchunkdata = alldata.slice(alldata.length-nrswitchtrials2, alldata.length);
+		
+		var block_score = 0;
+		for (var i = 0; i < nrswitchtrials2; i++) {
+			block_score = block_score + (lastchunkdata[i].accuracy == true);
+		}
+				
+		if (block_score < 8){
+			if (error_again == 1) {
+				error_again = 0;
+				show_reminder_2 = true;
+			} else {
+				error_again = 1;
+				show_reminder_2 = false;
+			}
+			
+			return true
+		} else {
+			return false
+		}
+		
+    }
+};
+
+var instructions_3_block = {
+	type: "instructions",
+	pages: instructions_3_text(),
+	key_forward: "j",
+	key_backward: "f",
+	show_clickable_nav: true,
+}
+
+var dst_practice_choice_block = {
+	type: "dst-practice-stim",
+	timing_post_trial: 0,
+	nrtrials: nrchoicepracticetrials,
+	subid: function(){
+		return subid
+	},
+};
+
+var instructions_4_block = {
+	type: "instructions",
+	pages: instructions_4_text(),
+	key_forward: "j",
+	key_backward: "f",
+	show_clickable_nav: true,
+}
+
+var dst_block = {
+	type: "dst-stim",
+	timing_post_trial: 0,
+	nrtrials: nrtrials,
+	nrblocks: nrblocks,
+	trialsperblock: trialsperblock,
+	boxes: boxes,
+	pairs: pairs,
+	mapping: mapping,
+	subid: function(){
+		return subid
+	},
+};
+
+var save_data_block = {
+	type: 'call-function',
+	func: function(data){
+		save_data(jsPsych.data.getTrialsOfType("dst-practice-stim"),"dst_data");
+		save_data(jsPsych.data.getTrialsOfType("dst-stim"),"dst_data");
+	}
+}
+
+var demographics_block = {
+	type: "survey-text", 
+	preamble: ["Please provide us with some information about yourself:"], 
+	questions: [["Age", "Sex (enter m for male and f for female)"]],
+};
+var check_demographics_block = { 
+	chunk_type: 'while', 
+	timeline: [demographics_block], 
+	continue_function: function(data){ 
+		answers = data[0].responses.split(":"); 
+		age_ans = answers[1].split('"')[1]; 
+		sex_ans = answers[2].split('"')[1];
+		totaltime = data[0].time_elapsed;
+		if (jQuery.isNumeric(age_ans) && (sex_ans == 'm' || sex_ans == 'f')){ 
+			age = parseInt(age_ans);
+			sex = sex_ans;
+			return false; 
+		} else { 
+			if (!jQuery.isNumeric(age)) 
+				alert("Please enter your age as a number (make sure to remove any spaces)."); 
+			if (sex != 'm' && sex != 'f') 
+				alert("You entered your sex incorrectly. Please write \"f\" if you are female and \"m\" if you are male."); 
+			return true;
+		}
+	}
+}
+
+var save_subinfo_block = {
+	type: 'call-function',
+	func: function(){
+		var lasttrialdata = jsPsych.data.getLastTrialData();
+		var surveydata = jsPsych.data.getTrialsOfType("survey-likert");
+		subinfo = new Array(1);
+		subinfo[0] = {
+			subid: subid,
+			workerid: workerId,
+			assignmentid: assignmentId,
+			age: age,
+			sex: sex,
+			time_elapsed: lasttrialdata.time_elapsed,
+		};
+		save_data(subinfo,"dst_subinfo");
+	}
+}
+
+var end_block = {
+	type:'html',
+	pages: [{url: "end.html"}],
+};
+
+/* create experiment definition array */
+var experiment = [];
+
+experiment.push(change_colors);
+experiment.push(check_id_block);
+experiment.push(instructions_1_block);
+experiment.push(switch_1_while_block);
+experiment.push(instructions_2_block);
+experiment.push(switch_2_while_block);
+experiment.push(instructions_3_block);
+experiment.push(dst_practice_choice_block);
+experiment.push(instructions_4_block);
+experiment.push(dst_block);
+experiment.push(save_data_block);
+experiment.push(check_demographics_block);
+experiment.push(save_subinfo_block);
+experiment.push(end_block);
+
+jsPsych.preloadImages(images, function(){ startExperiment(); });
+
+/* start the experiment */
+function startExperiment(){
+	jsPsych.init({
+		experiment_structure: experiment,
+	});
+}
+</script>
+</html>
